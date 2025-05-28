@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, FileText } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -19,13 +19,7 @@ export default function NotesPage() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user) {
-      fetchNotes()
-    }
-  }, [user])
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('notes')
@@ -40,7 +34,13 @@ export default function NotesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (user) {
+      fetchNotes()
+    }
+  }, [user, fetchNotes])
 
   const createNote = async () => {
     try {
