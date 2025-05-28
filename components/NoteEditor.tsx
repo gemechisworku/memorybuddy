@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Save } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
 import toast from 'react-hot-toast'
 
 // Dynamically import SimpleMDE with no SSR
@@ -30,10 +29,10 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
     setHasChanges(false)
   }, [content, noteId])
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!hasChanges || isSaving) return;
     
-    let toastId = toast.loading('Saving changes...');
+    const toastId = toast.loading('Saving changes...');
     setIsSaving(true);
     
     try {
@@ -57,7 +56,7 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [hasChanges, isSaving, localContent, onChange, onSave, content])
 
   // SimpleMDE options
   const editorOptions = useMemo(() => ({

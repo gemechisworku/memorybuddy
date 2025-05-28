@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Plus, Search, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+// import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import AppLayout from '../components/AppLayout'
@@ -25,7 +25,7 @@ export default function NotesPage() {
   const [isNoteListCollapsed, setIsNoteListCollapsed] = useState(false)
   const [showPreview, setShowPreview] = useState(true)
   const { user } = useAuth()
-  const router = useRouter()
+  // const router = useRouter()
 
   const fetchNotes = useCallback(async () => {
     try {
