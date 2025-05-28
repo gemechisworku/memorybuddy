@@ -267,7 +267,7 @@ export default function NotesPage() {
                             }
                             await handleSave(noteToSave)
                             return true
-                          } catch (error) {
+                          } catch {
                             return false
                           }
                         }

@@ -1,30 +1,30 @@
 'use client'
-
-import { useState, useEffect } from 'react'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../../contexts/AuthContext'
 import { supabase } from '../../../lib/supabase'
 import AppLayout from '../../../components/AppLayout'
 import NoteEditor from '../../../components/NoteEditor'
 import Modal from '../../../components/Modal'
+import { Note } from '../../../types/note'
 
 export default function NotePage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { user } = useAuth()
-  const [note, setNote] = useState({ title: '', content: '' })
+  const [note, setNote] = useState<Note>({ 
+    id: params.id,
+    title: '',
+    content: '',
+    user_id: user?.id || '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  })
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const isNew = params.id === 'new'
 
-  useEffect(() => {
-    if (!isNew) {
-      fetchNote()
-    } else {
-      setLoading(false)
-    }
-  }, [params.id])
-
-  const fetchNote = async () => {
+  const fetchNote = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('notes')
@@ -40,36 +40,52 @@ export default function NotePage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, router])
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (!isNew) {
+      fetchNote()
+    } else {
+      setLoading(false)
+    }
+  }, [isNew, fetchNote])
+
+  const handleSave = async (content: string) => {
     try {
       setLoading(true)
       if (isNew) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('notes')
           .insert([
             {
               title: note.title || 'Untitled Note',
-              content: note.content,
+              content,
               user_id: user?.id,
             },
           ])
+          .select()
+          .single()
+
         if (error) throw error
+        router.push('/')
+        return true
       } else {
         const { error } = await supabase
           .from('notes')
           .update({
             title: note.title || 'Untitled Note',
-            content: note.content,
+            content,
             updated_at: new Date().toISOString(),
           })
           .eq('id', params.id)
+
         if (error) throw error
+        router.push('/')
+        return true
       }
-      router.push('/')
     } catch (error) {
       console.error('Error saving note:', error)
+      return false
     } finally {
       setLoading(false)
     }
@@ -97,12 +113,10 @@ export default function NotePage({ params }: { params: { id: string } }) {
       <div className="max-w-4xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
           <NoteEditor
-            value={note}
-            onChange={setNote}
+            noteId={note.id}
+            content={note.content}
+            onChange={(content) => setNote(prev => ({ ...prev, content }))}
             onSave={handleSave}
-            onDelete={!isNew ? () => setShowDeleteModal(true) : undefined}
-            isNew={isNew}
-            loading={loading}
           />
         </div>
       </div>
