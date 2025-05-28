@@ -3,6 +3,7 @@
 import './globals.css'
 import { AuthProvider } from '../contexts/AuthContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
+import { Toaster } from 'react-hot-toast'
 
 export default function RootLayout({
   children,
@@ -15,6 +16,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <Toaster position="bottom-right" />
           </AuthProvider>
         </ThemeProvider>
       </body>

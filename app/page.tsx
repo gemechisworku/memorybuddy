@@ -95,9 +95,13 @@ export default function NotesPage() {
         .eq('id', note.id)
 
       if (error) throw error
+      
+      // Only fetch notes after successful save
       await fetchNotes()
+      return true // indicate success
     } catch (error) {
       console.error('Error saving note:', error)
+      throw error // Re-throw the error to be handled by the editor component
     }
   }
 
@@ -253,7 +257,22 @@ export default function NotesPage() {
                       onChange={(content) => {
                         setSelectedNote((prev) => prev ? { ...prev, content } : prev)
                       }}
-                      onSave={() => handleSave(selectedNote)}
+                      onSave={async (contentToSave) => {
+                        if (selectedNote) {
+                          try {
+                            const noteToSave = {
+                              ...selectedNote,
+                              content: contentToSave,
+                              updated_at: new Date().toISOString()
+                            }
+                            await handleSave(noteToSave)
+                            return true
+                          } catch (error) {
+                            return false
+                          }
+                        }
+                        return false
+                      }}
                     />
                   </div>
                 )}

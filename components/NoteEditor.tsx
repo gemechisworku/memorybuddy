@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Save } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import toast from 'react-hot-toast'
 
 // Dynamically import SimpleMDE with no SSR
 const SimpleMDE = dynamic(
@@ -14,52 +15,49 @@ const SimpleMDE = dynamic(
 interface NoteEditorProps {
   content: string
   onChange: (content: string) => void
-  onSave: () => void
+  onSave: (content: string) => Promise<boolean>
   noteId: string
 }
 
 export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEditorProps) {
   const [localContent, setLocalContent] = useState(content)
   const [hasChanges, setHasChanges] = useState(false)
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Update local content when prop changes (e.g., when switching notes)
   useEffect(() => {
     setLocalContent(content)
     setHasChanges(false)
-    // Clear any existing timeout when switching notes
-    if (saveTimeout) {
-      clearTimeout(saveTimeout)
-      setSaveTimeout(null)
-    }
-  }, [content])
+  }, [content, noteId])
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout)
-      }
-    }
-  }, [saveTimeout])
-
-  const debouncedSave = useCallback(() => {
-    // Clear any existing timeout
-    if (saveTimeout) {
-      clearTimeout(saveTimeout)
-    }
-
-    // Set new timeout
-    const timeout = setTimeout(() => {
-      if (hasChanges) {
-        onChange(localContent) // Update parent state
-        onSave() // Save to database
+  const handleSave = async () => {
+    if (!hasChanges || isSaving) return;
+    
+    let toastId = toast.loading('Saving changes...');
+    setIsSaving(true);
+    
+    try {
+      // Update parent state
+      onChange(localContent)
+      
+      // Save to database with current local content
+      const success = await onSave(localContent)
+      
+      if (success) {
         setHasChanges(false)
+        toast.success('Changes saved successfully', { id: toastId })
+      } else {
+        throw new Error('Failed to save changes')
       }
-    }, 10000) // 10 seconds
-
-    setSaveTimeout(timeout)
-  }, [hasChanges, localContent, onChange, onSave, saveTimeout])
+    } catch (error) {
+      console.error('Error saving:', error)
+      toast.error('Failed to save changes', { id: toastId })
+      // Revert local content to the last known good state
+      setLocalContent(content)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // SimpleMDE options
   const editorOptions = useMemo(() => ({
@@ -79,34 +77,20 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
   const handleChange = useCallback((newContent: string) => {
     setLocalContent(newContent)
     setHasChanges(true)
-    debouncedSave()
-  }, [debouncedSave])
-
-  const handleManualSave = useCallback(() => {
-    if (hasChanges) {
-      // Clear any pending auto-save
-      if (saveTimeout) {
-        clearTimeout(saveTimeout)
-        setSaveTimeout(null)
-      }
-      onChange(localContent) // Update parent state
-      onSave() // Save to database
-      setHasChanges(false)
-    }
-  }, [hasChanges, localContent, onChange, onSave, saveTimeout])
+  }, [])
 
   // Add keyboard shortcut for manual save
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        handleManualSave()
+        handleSave()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleManualSave])
+  }, [handleSave])
 
   // Use a memo for the editor component to prevent unnecessary re-renders
   const editor = useMemo(() => (
@@ -124,11 +108,16 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
       {hasChanges && (
         <div className="absolute top-2 right-2 z-10">
           <button
-            onClick={handleManualSave}
-            className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            onClick={handleSave}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-3 py-1.5 ${
+              isSaving 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white rounded-lg transition-colors`}
           >
             <Save size={16} />
-            Save
+            {isSaving ? 'Saving...' : 'Save'}
           </button>
         </div>
       )}
