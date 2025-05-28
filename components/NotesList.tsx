@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { Note } from '../types/note'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,17 +11,13 @@ export default function NotesList() {
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user) {
-      fetchNotes()
-    }
-  }, [user])
+  const fetchNotes = useCallback(async () => {
+    if (!user) return
 
-  const fetchNotes = async () => {
     const { data, error } = await supabase
       .from('notes')
       .select('*')
-      .eq('user_id', user?.id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -30,7 +26,13 @@ export default function NotesList() {
     }
 
     setNotes(data || [])
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      fetchNotes()
+    }
+  }, [user, fetchNotes])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
