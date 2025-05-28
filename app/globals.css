@@ -1,3 +1,58 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* SimpleMDE Dark Mode Styles */
+.dark .EasyMDEContainer {
+  background-color: transparent;
+}
+
+.dark .EasyMDEContainer .CodeMirror {
+  background-color: transparent;
+  color: #e5e7eb;
+  border-color: #374151;
+}
+
+.dark .editor-toolbar {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .editor-toolbar button {
+  color: #9ca3af !important;
+}
+
+.dark .editor-toolbar button:hover,
+.dark .editor-toolbar button.active {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
+.dark .editor-toolbar i.separator {
+  border-color: #4b5563;
+}
+
+.dark .CodeMirror-cursor {
+  border-color: #e5e7eb;
+}
+
+.dark .CodeMirror-selected {
+  background-color: #374151 !important;
+}
+
+.dark .CodeMirror-line::selection,
+.dark .CodeMirror-line > span::selection,
+.dark .CodeMirror-line > span > span::selection {
+  background-color: #374151 !important;
+}
+
+/* Fix cursor jumping in SimpleMDE */
+.EasyMDEContainer .CodeMirror-scroll {
+  min-height: 300px;
+}
+
+.EasyMDEContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+} 
