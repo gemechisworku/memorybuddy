@@ -1,4 +1,4 @@
-# Quick Notes
+# MemoryBuddy
 
 A simple note-taking web application built with Next.js, Supabase, and Tailwind CSS.
 
@@ -21,7 +21,7 @@ A simple note-taking web application built with Next.js, Supabase, and Tailwind 
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd quick-notes
+cd memorybuddy
 ```
 
 2. Install dependencies:
