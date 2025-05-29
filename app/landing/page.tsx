@@ -16,7 +16,7 @@ export default function LandingPage() {
         <div className="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md transform hover:scale-105 transition-transform duration-300">
           <h2 className="text-3xl font-semibold mb-4 text-sky-300">Capture Instantly</h2>
           <p className="text-slate-400 leading-relaxed">
-            Jot down notes quickly with our intuitive interface. Whether it's a fleeting idea or a detailed plan, MemoryBuddy is ready.
+            Jot down notes quickly with our intuitive interface. Whether it&apos;s a fleeting idea or a detailed plan, MemoryBuddy is ready.
           </p>
         </div>
         <div className="bg-slate-800 p-8 rounded-xl shadow-2xl max-w-md transform hover:scale-105 transition-transform duration-300">

@@ -40,7 +40,7 @@ export default function LoginPage() {
       {/* Login Container */}
       <div className="w-full max-w-[340px]">
         <div className="bg-gray-800 rounded-xl px-6 py-8 shadow-lg border border-gray-700">
-          <h2 className="text-xl font-semibold text-white mb-6">Sign in to Quick Notes</h2>
+          <h2 className="text-xl font-semibold text-white mb-6">Sign in to MemoryBuddy</h2>
           
           <Auth
             supabaseClient={supabase}

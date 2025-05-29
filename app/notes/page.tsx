@@ -1,59 +1,97 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
-// import { useRouter } from 'next/navigation'
-import { useAuth } from '../../contexts/AuthContext'
-import { supabase } from '../../lib/supabase'
-import AppLayout from '../../components/AppLayout'
-import ReactMarkdown from 'react-markdown'
-import NoteEditor from '../../components/NoteEditor'
-import 'easymde/dist/easymde.min.css'
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Search, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import AppLayout from '../../components/AppLayout';
+import ReactMarkdown from 'react-markdown';
+import NoteEditor from '../../components/NoteEditor';
+import 'easymde/dist/easymde.min.css';
 
 interface Note {
-  id: string
-  title: string
-  content: string
-  created_at: string
-  user_id: string
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
 }
 
 export default function NotesPage() {
-  const [notes, setNotes] = useState<Note[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
-  const [isNoteListCollapsed, setIsNoteListCollapsed] = useState(false)
-  const [showPreview, setShowPreview] = useState(true)
-  const { user } = useAuth()
-  // const router = useRouter()
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [isNoteListCollapsed, setIsNoteListCollapsed] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const { user } = useAuth();
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Filter notes based on debounced search term
+  const filteredNotes = useMemo(() => {
+    if (!debouncedSearchTerm) return notes;
+    const lowerSearchTerm = debouncedSearchTerm.toLowerCase();
+    return notes.filter(note =>
+      note.title.toLowerCase().includes(lowerSearchTerm) ||
+      note.content.toLowerCase().includes(lowerSearchTerm)
+    );
+  }, [notes, debouncedSearchTerm]);
+
+  // Update selected note only when necessary
+  useEffect(() => {
+    if (filteredNotes.length > 0 && !selectedNote) {
+      // Only set selectedNote if none is selected
+      setSelectedNote(filteredNotes[0]);
+    } else if (filteredNotes.length === 0 && selectedNote) {
+      // If search results are empty, keep the current note if it exists in the original notes
+      const noteStillExists = notes.some(n => n.id === selectedNote.id);
+      if (!noteStillExists) {
+        setSelectedNote(null);
+      }
+    } else if (selectedNote && !filteredNotes.some(n => n.id === selectedNote.id)) {
+      // If the current selected note is no longer in filteredNotes, select the first available
+      setSelectedNote(filteredNotes[0] || null);
+    }
+  }, [filteredNotes, selectedNote, notes]);
 
   const fetchNotes = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error
-      setNotes(data || [])
+      if (error) throw error;
+      setNotes(data || []);
+      // Only set selectedNote if none is currently selected
       if (data && data.length > 0 && !selectedNote) {
-        setSelectedNote(data[0])
+        setSelectedNote(data[0]);
       }
     } catch (error) {
-      console.error('Error fetching notes:', error)
+      console.error('Error fetching notes:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [user?.id, selectedNote])
+  }, [user?.id, selectedNote]);
 
   useEffect(() => {
     if (user) {
-      fetchNotes()
+      fetchNotes();
     }
-  }, [user, fetchNotes])
+  }, [user, fetchNotes]);
 
-  const handleNewNote = async () => {
+  const handleNewNote = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('notes')
@@ -65,25 +103,26 @@ export default function NotesPage() {
           },
         ])
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
       if (data) {
-        await fetchNotes()
-        setSelectedNote(data)
-        setShowPreview(false) // Switch to edit mode for new notes
+        await fetchNotes();
+        setSearchTerm(''); // Clear search to show all notes
+        setSelectedNote(data);
+        setShowPreview(false);
       }
     } catch (error) {
-      console.error('Error creating note:', error)
+      console.error('Error creating note:', error);
     }
-  }
+  }, [user?.id, fetchNotes]);
 
-  const handleNoteSelect = (note: Note) => {
-    setSelectedNote(note)
-    setShowPreview(true) // Switch to preview mode when selecting a note
-  }
+  const handleNoteSelect = useCallback((note: Note) => {
+    setSelectedNote(note);
+    setShowPreview(true);
+  }, []);
 
-  const handleSave = async (note: Note) => {
+  const handleSave = useCallback(async (note: Note) => {
     try {
       const { error } = await supabase
         .from('notes')
@@ -92,36 +131,37 @@ export default function NotesPage() {
           content: note.content,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', note.id)
+        .eq('id', note.id);
 
-      if (error) throw error
-      
-      // Only fetch notes after successful save
-      await fetchNotes()
-      return true // indicate success
+      if (error) throw error;
+      await fetchNotes();
+      return true;
     } catch (error) {
-      console.error('Error saving note:', error)
-      throw error // Re-throw the error to be handled by the editor component
+      console.error('Error saving note:', error);
+      throw error;
     }
-  }
+  }, [fetchNotes]);
 
-  const handleDelete = async (noteId: string) => {
+  const handleDelete = useCallback(async (noteId: string) => {
     try {
       const { error } = await supabase
         .from('notes')
         .delete()
-        .eq('id', noteId)
+        .eq('id', noteId);
 
-      if (error) throw error
-      await fetchNotes()
+      if (error) throw error;
+      await fetchNotes();
       if (selectedNote?.id === noteId) {
-        setSelectedNote(notes[0] || null)
+        setSelectedNote(filteredNotes[0] || null);
       }
     } catch (error) {
-      console.error('Error deleting note:', error)
+      console.error('Error deleting note:', error);
     }
-  }
+  }, [selectedNote, filteredNotes, fetchNotes]);
 
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
 
   return (
     <AppLayout>
@@ -153,7 +193,9 @@ export default function NotesPage() {
                 <input
                   type="text"
                   placeholder="Search notes..."
-                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                 />
               </div>
             )}
@@ -165,13 +207,13 @@ export default function NotesPage() {
               <div className="flex justify-center items-center h-32">
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
-            ) : notes.length === 0 ? (
+            ) : filteredNotes.length === 0 ? (
               <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                No notes yet
+                {searchTerm ? 'No notes match your search.' : 'No notes yet. Create one!'}
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {notes.map((note) => (
+                {filteredNotes.map((note) => (
                   <div
                     key={note.id}
                     onClick={() => handleNoteSelect(note)}
@@ -214,8 +256,8 @@ export default function NotesPage() {
                 <input
                   type="text"
                   value={selectedNote.title}
-                  onChange={(e) => setSelectedNote({ ...selectedNote, title: e.target.value })}
-                  onBlur={() => handleSave(selectedNote)}
+                  onChange={(e) => setSelectedNote(prev => prev ? { ...prev, title: e.target.value } : null)}
+                  onBlur={() => selectedNote && handleSave(selectedNote)}
                   className="text-2xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-white flex-1 mr-4"
                   placeholder="Untitled Note"
                 />
@@ -247,7 +289,7 @@ export default function NotesPage() {
               <div className="flex-1 overflow-y-auto">
                 {showPreview ? (
                   <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                    <ReactMarkdown>{selectedNote.content || 'No content'}</ReactMarkdown>
+                    <ReactMarkdown>{selectedNote.content || 'No content. Start typing!'}</ReactMarkdown>
                   </div>
                 ) : (
                   <div className="h-full">
@@ -255,7 +297,7 @@ export default function NotesPage() {
                       noteId={selectedNote.id}
                       content={selectedNote.content}
                       onChange={(content: string) => {
-                        setSelectedNote((prev) => prev ? { ...prev, content } : prev)
+                        setSelectedNote(prev => prev ? { ...prev, content: content } : null);
                       }}
                       onSave={async (contentToSave: string) => {
                         if (selectedNote) {
@@ -263,15 +305,14 @@ export default function NotesPage() {
                             const noteToSave = {
                               ...selectedNote,
                               content: contentToSave,
-                              updated_at: new Date().toISOString()
-                            }
-                            await handleSave(noteToSave)
-                            return true
+                            };
+                            await handleSave(noteToSave);
+                            return true;
                           } catch {
-                            return false
+                            return false;
                           }
                         }
-                        return false
+                        return false;
                       }}
                     />
                   </div>
@@ -282,9 +323,11 @@ export default function NotesPage() {
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
                 <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No note selected</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {loading ? 'Loading notes...' : (searchTerm && filteredNotes.length === 0) ? 'No Results' : 'Select a note or create a new one'}
+                </h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Select a note from the sidebar or create a new one
+                  {searchTerm && filteredNotes.length === 0 ? `No notes found matching "${searchTerm}".` : 'Your notes will appear here.'}
                 </p>
               </div>
             </div>
@@ -292,5 +335,5 @@ export default function NotesPage() {
         </div>
       </div>
     </AppLayout>
-  )
-} 
+  );
+}
