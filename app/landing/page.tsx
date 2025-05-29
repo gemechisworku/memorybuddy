@@ -14,7 +14,9 @@ export default function LandingPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="text-xl font-semibold text-sky-400">MemoryBuddy</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-semibold text-sky-400">MemoryBuddy</span>
+              </div>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -58,7 +60,7 @@ export default function LandingPage() {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                href="/notes"
+                href="/login"
                 className="inline-flex items-center px-8 py-3 text-lg font-medium bg-sky-500 hover:bg-sky-400 text-white rounded-lg transition-colors shadow-lg shadow-sky-500/25"
               >
                 Get Started
