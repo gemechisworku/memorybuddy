@@ -6,7 +6,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   FileText, 
-  Settings, 
   User,
   LogOut,
   Moon,
@@ -47,12 +46,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: User, 
       path: '/account',
       onClick: () => router.push('/account')
-    },
-    { 
-      label: 'Settings', 
-      icon: Settings, 
-      path: '/settings',
-      onClick: () => router.push('/settings')
     }
   ]
 

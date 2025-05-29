@@ -9,7 +9,13 @@ import NoteEditor from '../../../components/NoteEditor'
 import Modal from '../../../components/Modal'
 import { Note } from '../../../types/note'
 
-export default function NotePage({ params }: { params: { id: string } }) {
+type PageProps = {
+  params: {
+    id: string
+  }
+}
+
+export default function NotePage({ params }: PageProps) {
   const router = useRouter()
   const { user } = useAuth()
   const [note, setNote] = useState<Note>({ 
