@@ -5,7 +5,6 @@ import { Plus, Search, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AppLayout from '../../components/AppLayout';
-import ReactMarkdown from 'react-markdown';
 import NoteEditor from '../../components/NoteEditor';
 import 'easymde/dist/easymde.min.css';
 import { toast } from 'react-hot-toast';

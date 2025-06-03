@@ -78,12 +78,34 @@ export default function NoteEditor({ note, onSave, showPreview, onTogglePreview,
     status: false,
     autofocus: false,
     toolbar: [
-      'bold', 'italic', 'heading', '|',
+      'bold', 'italic', 'heading-1', 'heading-2', 'heading-3', '|',
       'quote', 'unordered-list', 'ordered-list', '|',
-      'link', 'image', '|',
+      'link', '|',
       'guide'
     ] as const,
-  }), [])
+    previewRender: (text: string) => {
+      return text
+        .replace(/^#+\s/gm, '') // Remove heading markers
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markers
+        .replace(/\*(.*?)\*/g, '$1') // Remove italic markers
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to just text
+        .replace(/`(.*?)`/g, '$1') // Remove code markers
+        .replace(/~~(.*?)~~/g, '$1') // Remove strikethrough markers
+        .replace(/^\s*[-*+]\s/gm, '') // Remove list markers
+        .replace(/^\s*\d+\.\s/gm, '') // Remove numbered list markers
+        .replace(/^\s*>\s/gm, '') // Remove blockquote markers
+        .trim();
+    },
+    renderingConfig: {
+      singleLineBreaks: false,
+      codeSyntaxHighlighting: false
+    },
+    sideBySideFullscreen: false,
+    shortcuts: {
+      toggleSideBySide: null,
+      toggleFullScreen: null
+    }
+  }), []);
 
   const handleChange = useCallback((newContent: string) => {
     setLocalContent(newContent)
@@ -105,14 +127,89 @@ export default function NoteEditor({ note, onSave, showPreview, onTogglePreview,
 
   // Use a memo for the editor component to prevent unnecessary re-renders
   const editor = useMemo(() => (
-    <SimpleMDE
-      key={note.id}
-      value={localContent}
-      onChange={handleChange}
-      options={editorOptions}
-      className="h-full"
-    />
-  ), [note.id, localContent, handleChange, editorOptions])
+    <div className="h-full">
+      <SimpleMDE
+        key={note.id}
+        value={localContent}
+        onChange={handleChange}
+        options={editorOptions}
+        className="h-full"
+      />
+      <style jsx global>{`
+        .CodeMirror {
+          font-family: inherit !important;
+        }
+        .CodeMirror-line {
+          font-family: inherit !important;
+        }
+        .CodeMirror pre.CodeMirror-line {
+          font-family: inherit !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like {
+          font-family: inherit !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like * {
+          font-family: inherit !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span {
+          font-family: inherit !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-header {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-strong {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-em {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-list {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-quote {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-formatting-link {
+          display: none !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-header {
+          font-weight: bold !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-strong {
+          font-weight: bold !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-em {
+          font-style: italic !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-quote {
+          font-style: italic !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-link {
+          color: #0366d6 !important;
+          text-decoration: underline !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-list {
+          list-style-type: disc !important;
+        }
+        .CodeMirror pre.CodeMirror-line-like span.cm-number {
+          list-style-type: decimal !important;
+        }
+        .editor-toolbar button.fa-header {
+          position: relative;
+        }
+        .editor-toolbar button.fa-header::after {
+          content: "▼";
+          font-size: 8px;
+          position: absolute;
+          right: 2px;
+          top: 2px;
+        }
+      `}</style>
+    </div>
+  ), [note.id, localContent, handleChange, editorOptions]);
 
   return (
     <div className="h-full relative">
