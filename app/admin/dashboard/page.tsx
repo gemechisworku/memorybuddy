@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
 import { Users, FileText, Clock } from 'lucide-react';
 import AppLayout from '../../../components/AppLayout';
-import { User } from '@supabase/supabase-js';
 
 interface UserStats {
   total_users: number;
@@ -24,8 +22,6 @@ interface UserProfile {
 }
 
 export default function AdminDashboard() {
-  console.log('AdminDashboard: Component mounting');
-  const { user } = useAuth();
   const [stats, setStats] = useState<UserStats>({
     total_users: 0,
     total_notes: 0,
@@ -39,7 +35,6 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('AdminDashboard: Starting data fetch');
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -61,40 +56,47 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchStats = async () => {
-    console.log('AdminDashboard: Fetching stats');
     try {
       // Get total users
-      const { count: totalUsers } = await supabase
+      const { count: totalUsers, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
+      if (usersError) throw usersError;
+
       // Get total notes
-      const { count: totalNotes } = await supabase
+      const { count: totalNotes, error: notesError } = await supabase
         .from('notes')
         .select('*', { count: 'exact', head: true });
+
+      if (notesError) throw notesError;
 
       // Get active users (users who have created notes in the last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       
-      const { count: activeUsers } = await supabase
+      const { data: activeUsersData, error: activeError } = await supabase
         .from('notes')
-        .select('user_id', { count: 'exact', head: true })
+        .select('user_id')
         .gte('created_at', thirtyDaysAgo.toISOString());
 
-      console.log('AdminDashboard: Stats fetched:', { totalUsers, totalNotes, activeUsers });
+      if (activeError) throw activeError;
+
+      // Count unique users who created notes in the last 30 days
+      const activeUsers = new Set(activeUsersData?.map(note => note.user_id)).size;
+
       setStats({
         total_users: totalUsers || 0,
         total_notes: totalNotes || 0,
-        active_users: activeUsers || 0,
+        active_users: activeUsers,
       });
     } catch (error) {
       console.error('AdminDashboard: Error fetching stats:', error);
+      throw error;
     }
   };
 
   const fetchUsers = async () => {
-    console.log('AdminDashboard: Fetching users');
     try {
       // First fetch all profiles
       const { data: profilesData, error: profilesError } = await supabase
@@ -102,13 +104,9 @@ export default function AdminDashboard() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (profilesError) {
-        console.error('AdminDashboard: Error fetching users:', profilesError);
-        throw new Error(profilesError.message);
-      }
+      if (profilesError) throw profilesError;
 
       if (!profilesData) {
-        console.error('AdminDashboard: No users data returned');
         throw new Error('No users data returned');
       }
 
@@ -117,16 +115,15 @@ export default function AdminDashboard() {
         .from('notes')
         .select('user_id');
 
-      if (notesError) {
-        console.error('AdminDashboard: Error fetching notes:', notesError);
-        throw new Error(notesError.message);
-      }
+      if (notesError) throw notesError;
 
       // Count notes per user
       const noteCountMap = new Map<string, number>();
       notesData?.forEach(note => {
-        const currentCount = noteCountMap.get(note.user_id) || 0;
-        noteCountMap.set(note.user_id, currentCount + 1);
+        if (note.user_id) {
+          const currentCount = noteCountMap.get(note.user_id) || 0;
+          noteCountMap.set(note.user_id, currentCount + 1);
+        }
       });
 
       // Transform the data to include note count
@@ -135,11 +132,10 @@ export default function AdminDashboard() {
         note_count: noteCountMap.get(profile.id) || 0
       }));
 
-      console.log('AdminDashboard: Fetched users:', transformedData);
       setUsers(transformedData);
     } catch (error) {
       console.error('AdminDashboard: Error fetching users:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+      throw error;
     }
   };
 
@@ -190,33 +186,36 @@ export default function AdminDashboard() {
     return 0;
   });
 
-  const filteredAndSortedUsers = sortedUsers
-    .filter(user => 
-      user.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredAndSortedUsers = sortedUsers.filter(user => {
+    const searchLower = searchTerm.toLowerCase();
+    const displayName = user.display_name?.toLowerCase() || '';
+    const username = user.username?.toLowerCase() || '';
+    return displayName.includes(searchLower) || username.includes(searchLower);
+  });
 
   if (loading) {
-    console.log('AdminDashboard: Showing loading state');
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <AppLayout>
+        <div className="flex h-screen items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      </AppLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-red-500">
-          <h2 className="text-xl font-semibold mb-2">Error</h2>
-          <p>{error}</p>
+      <AppLayout>
+        <div className="flex h-screen items-center justify-center">
+          <div className="text-red-500">
+            <h2 className="text-xl font-semibold mb-2">Error</h2>
+            <p>{error}</p>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
-  console.log('AdminDashboard: Rendering dashboard');
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -313,15 +312,15 @@ export default function AdminDashboard() {
                   <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       <div>
-                        <div className="font-medium">{user.display_name}</div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs">{user.username}</div>
+                        <div className="font-medium">{user.display_name || 'Unnamed User'}</div>
+                        <div className="text-gray-500 dark:text-gray-400 text-xs">{user.username || 'No username'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {user.note_count}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {new Date(user.created_at).toLocaleDateString()}
+                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {user.last_sign_in ? new Date(user.last_sign_in).toLocaleDateString() : 'Never'}

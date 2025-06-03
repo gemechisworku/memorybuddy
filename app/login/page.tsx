@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { Auth } from '@supabase/auth-ui-react'
 import { ThemeSupa } from '@supabase/auth-ui-shared'
 import { supabase } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../../contexts/AuthContext'
 import Logo from '../../components/Logo'
+import ErrorMessage from '../../components/ErrorMessage'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
@@ -18,7 +19,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Check for auth callback
     const handleAuthCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         console.log('LoginPage: Session found after auth callback, redirecting to:', redirectTo)
         router.push(redirectTo)
@@ -34,6 +35,26 @@ export default function LoginPage() {
       router.push(redirectTo)
     }
   }, [user, loading, router, redirectTo])
+
+  // Handle error from URL parameters
+  useEffect(() => {
+    const errorParam = searchParams.get('error_description')
+    if (errorParam) {
+      // Decode the error message and clean it up
+      const decodedError = decodeURIComponent(errorParam)
+        .replace(/\+/g, ' ') // Replace + with spaces
+        .replace(/#.*$/, '') // Remove hash part
+        .replace(/error=.*?&/, '') // Remove error= part
+        .replace(/error_code=.*?&/, '') // Remove error_code= part
+        .replace(/&$/, ''); // Remove trailing &
+
+      setError(decodedError)
+      
+      // Remove error parameters from URL
+      const newUrl = window.location.pathname + window.location.search.replace(/[?&]error.*$/, '')
+      window.history.replaceState({}, '', newUrl)
+    }
+  }, [searchParams])
 
   const handleEmailSignUp = async (email: string) => {
     try {
@@ -83,11 +104,7 @@ export default function LoginPage() {
         <div className="bg-gray-800 rounded-xl px-6 py-8 shadow-lg border border-gray-700">
           <h2 className="text-xl font-semibold text-white mb-6">Sign in to MemoryBuddy</h2>
           
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
+          <ErrorMessage error={error} onDismiss={() => setError(null)} />
 
           <Auth
             supabaseClient={supabase}
@@ -148,5 +165,17 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 } 

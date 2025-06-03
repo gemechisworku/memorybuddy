@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { 
-  ChevronLeft, 
-  ChevronRight, 
   FileText, 
   User,
   LogOut,
@@ -12,15 +10,12 @@ import {
   Sun,
   Menu,
   X,
-  Home,
-  Settings,
   LayoutDashboard
 } from 'lucide-react'
 import Logo from './Logo'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { supabase } from '../lib/supabase'
-import Link from 'next/link'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
