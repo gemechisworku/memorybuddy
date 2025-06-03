@@ -1,6 +1,5 @@
 // app/notes/[id]/ClientNotePage.tsx
 'use client';
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -9,6 +8,7 @@ import AppLayout from '../../../components/AppLayout';
 import NoteEditor from '../../../components/NoteEditor';
 import Modal from '../../../components/Modal';
 import { Note } from '../../../types/note';
+import { toast } from 'react-hot-toast';
 
 type ClientNotePageProps = {
   id: string;
@@ -24,9 +24,10 @@ export default function ClientNotePage({ id }: ClientNotePageProps) {
     user_id: user?.id || '',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  });
+  } as Note);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const isNew = id === 'new';
 
   const fetchNote = useCallback(async () => {
@@ -38,7 +39,10 @@ export default function ClientNotePage({ id }: ClientNotePageProps) {
         .single();
 
       if (error) throw error;
-      if (data) setNote(data);
+      if (data) setNote({
+        ...data,
+        updated_at: data.updated_at || data.created_at || new Date().toISOString(),
+      } as Note);
     } catch (error) {
       console.error('Error fetching note:', error);
       router.push('/');
@@ -51,48 +55,35 @@ export default function ClientNotePage({ id }: ClientNotePageProps) {
     if (!isNew) {
       fetchNote();
     } else {
+      setNote((prev) => ({
+        ...prev,
+        updated_at: prev.updated_at || prev.created_at || new Date().toISOString(),
+      } as Note));
       setLoading(false);
     }
   }, [isNew, fetchNote]);
 
-  const handleSave = async (content: string) => {
+  const handleSave = async (updatedNote: Note): Promise<boolean> => {
     try {
-      setLoading(true);
-      if (isNew) {
-        const { data, error } = await supabase
-          .from('notes')
-          .insert([
-            {
-              title: note.title || 'Untitled Note',
-              content,
-              user_id: user?.id,
-            },
-          ])
-          .select()
-          .single();
+      const { error } = await supabase
+        .from('notes')
+        .update({
+          title: updatedNote.title,
+          content: updatedNote.content,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', updatedNote.id);
 
-        if (error) throw error;
-        router.push('/');
-        return true;
-      } else {
-        const { error } = await supabase
-          .from('notes')
-          .update({
-            title: note.title || 'Untitled Note',
-            content,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', id);
-
-        if (error) throw error;
-        router.push('/');
-        return true;
-      }
+      if (error) throw error;
+      setNote({
+        ...updatedNote,
+        updated_at: new Date().toISOString()
+      } as Note);
+      return true;
     } catch (error) {
       console.error('Error saving note:', error);
+      toast.error('Failed to save note');
       return false;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -113,15 +104,27 @@ export default function ClientNotePage({ id }: ClientNotePageProps) {
     }
   };
 
+  const confirmDelete = (id: string) => {
+    // Implement the logic to confirm the deletion of the note
+    console.log('Confirming deletion of note:', id);
+  };
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
           <NoteEditor
-            noteId={note.id}
-            content={note.content}
-            onChange={(content) => setNote((prev) => ({ ...prev, content }))}
+            note={{
+              id: note.id,
+              title: note.title,
+              content: note.content,
+              created_at: note.created_at,
+              user_id: note.user_id
+            }}
             onSave={handleSave}
+            showPreview={showPreview}
+            onTogglePreview={() => setShowPreview(!showPreview)}
+            onDelete={() => confirmDelete(note.id)}
           />
         </div>
       </div>
