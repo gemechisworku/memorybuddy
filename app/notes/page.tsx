@@ -29,6 +29,7 @@ export default function NotesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null);
   const { user } = useAuth();
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
 
   // Debounce search term
   useEffect(() => {
@@ -114,6 +115,7 @@ export default function NotesPage() {
         setSearchTerm(''); // Clear search to show all notes
         setSelectedNote(data);
         setShowPreview(false);
+        setMobileEditorOpen(true); // Open mobile editor for new note
       }
     } catch (error) {
       console.error('Error creating note:', error);
@@ -123,6 +125,12 @@ export default function NotesPage() {
   const handleNoteSelect = useCallback((note: Note) => {
     setSelectedNote(note);
     setShowPreview(true);
+    setMobileEditorOpen(true);
+  }, []);
+
+  const handleBackToList = useCallback(() => {
+    setShowPreview(true);
+    setMobileEditorOpen(false);
   }, []);
 
   const handleSave = useCallback(async (note: Note) => {
@@ -186,11 +194,25 @@ export default function NotesPage() {
     setSearchTerm(e.target.value);
   }, []);
 
+  // Add this function before the component
+  const stripMarkdown = (content: string) => {
+    return content
+      .replace(/[#*_~`]/g, '') // Remove markdown special characters
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert markdown links to just text
+      .replace(/\n/g, ' ') // Replace newlines with spaces
+      .trim();
+  };
+
   return (
     <AppLayout>
-      <div className="flex h-[calc(100vh-64px)]">
+      {/* Desktop View */}
+      <div className="hidden sm:flex h-[calc(100vh-64px)]">
         {/* Notes List Sidebar */}
-        <div className={`relative flex flex-col border-r border-gray-200 dark:border-gray-700 ${isNoteListCollapsed ? 'w-16' : 'w-80'} transition-all duration-300`}>
+        <div 
+          className={`relative flex flex-col border-r border-gray-200 dark:border-gray-700 
+            ${isNoteListCollapsed ? 'w-16' : 'w-64 sm:w-72 md:w-80'} 
+            transition-all duration-300`}
+        >
           {/* Toggle Button */}
           <button
             onClick={() => setIsNoteListCollapsed(!isNoteListCollapsed)}
@@ -200,25 +222,25 @@ export default function NotesPage() {
           </button>
 
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              {!isNoteListCollapsed && <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h2>}
+          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              {!isNoteListCollapsed && <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Notes</h2>}
               <button
                 onClick={handleNewNote}
-                className="p-2 text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                <Plus size={20} />
+                <Plus size={18} />
               </button>
             </div>
             {!isNoteListCollapsed && (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-2.5 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search notes..."
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+                  className="w-full pl-8 sm:pl-9 pr-3 sm:pr-4 py-1.5 sm:py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                 />
               </div>
             )}
@@ -231,7 +253,7 @@ export default function NotesPage() {
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : filteredNotes.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+              <div className="p-4 text-center text-sm sm:text-base text-gray-500 dark:text-gray-400">
                 {searchTerm ? 'No notes match your search.' : 'No notes yet. Create one!'}
               </div>
             ) : (
@@ -240,7 +262,7 @@ export default function NotesPage() {
                   <div
                     key={note.id}
                     onClick={() => handleNoteSelect(note)}
-                    className={`p-4 cursor-pointer transition-colors ${
+                    className={`p-3 sm:p-4 cursor-pointer transition-colors ${
                       selectedNote?.id === note.id
                         ? 'bg-blue-50 dark:bg-blue-900/20'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -248,21 +270,17 @@ export default function NotesPage() {
                   >
                     {isNoteListCollapsed ? (
                       <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                        <FileText size={16} />
+                        <FileText size={16} className="text-gray-500 dark:text-gray-400" />
                       </div>
                     ) : (
-                      <>
-                        <h3 className="font-medium text-gray-900 dark:text-white truncate mb-1">
-                          {note.title || 'Untitled Note'}
+                      <div>
+                        <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-1 truncate">
+                          {note.title}
                         </h3>
-                        <time className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(note.created_at).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </time>
-                      </>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {stripMarkdown(note.content)}
+                        </p>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -271,109 +289,157 @@ export default function NotesPage() {
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden">
+        {/* Note Editor */}
+        <div className="flex-1">
           {selectedNote ? (
-            <div className="h-full flex flex-col p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <input
                   type="text"
                   value={selectedNote.title}
-                  onChange={(e) => setSelectedNote(prev => prev ? { ...prev, title: e.target.value } : null)}
-                  onBlur={() => selectedNote && handleSave(selectedNote)}
-                  className="text-2xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-white flex-1 mr-4"
+                  onChange={(e) => {
+                    const updatedNote = { ...selectedNote, title: e.target.value };
+                    setSelectedNote(updatedNote);
+                    handleSave(updatedNote);
+                  }}
+                  className="w-full text-lg sm:text-xl font-semibold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white placeholder-gray-500"
                   placeholder="Untitled Note"
                 />
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowPreview(false)}
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      !showPreview ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setShowPreview(true)}
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      showPreview ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => confirmDelete(selectedNote.id)}
-                    className="px-3 py-1 rounded-lg text-sm bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {showPreview ? (
-                  <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
-                    <ReactMarkdown>{selectedNote.content || 'No content. Start typing!'}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className="h-full">
-                    <NoteEditor
-                      noteId={selectedNote.id}
-                      content={selectedNote.content}
-                      onChange={(content: string) => {
-                        setSelectedNote(prev => prev ? { ...prev, content: content } : null);
-                      }}
-                      onSave={async (contentToSave: string) => {
-                        if (selectedNote) {
-                          try {
-                            const noteToSave = {
-                              ...selectedNote,
-                              content: contentToSave,
-                            };
-                            await handleSave(noteToSave);
-                            return true;
-                          } catch {
-                            return false;
-                          }
-                        }
-                        return false;
-                      }}
-                    />
-                  </div>
-                )}
+              <div className="flex-1 overflow-hidden">
+                <NoteEditor
+                  note={selectedNote}
+                  onSave={handleSave}
+                  showPreview={showPreview}
+                  onTogglePreview={() => setShowPreview(!showPreview)}
+                  onDelete={() => confirmDelete(selectedNote.id)}
+                />
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                  {loading ? 'Loading notes...' : (searchTerm && filteredNotes.length === 0) ? 'No Results' : 'Select a note or create a new one'}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  {searchTerm && filteredNotes.length === 0 ? `No notes found matching "${searchTerm}".` : 'Your notes will appear here.'}
-                </p>
-              </div>
+            <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+              <p className="text-center px-4">
+                Select a note or create a new one to get started
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Mobile View */}
+      <div className="sm:hidden h-[calc(100vh-64px)]">
+        {mobileEditorOpen ? (
+          // Note Editor View
+          <div className="h-full flex flex-col">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBackToList}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <input
+                  type="text"
+                  value={selectedNote?.title || ''}
+                  onChange={(e) => {
+                    if (selectedNote) {
+                      const updatedNote = { ...selectedNote, title: e.target.value };
+                      setSelectedNote(updatedNote);
+                      handleSave(updatedNote);
+                    }
+                  }}
+                  className="w-full text-lg font-semibold bg-transparent border-none focus:ring-0 text-gray-900 dark:text-white placeholder-gray-500"
+                  placeholder="Untitled Note"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {selectedNote && (
+                <NoteEditor
+                  note={selectedNote}
+                  onSave={handleSave}
+                  showPreview={showPreview}
+                  onTogglePreview={() => setShowPreview(!showPreview)}
+                  onDelete={() => confirmDelete(selectedNote.id)}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          // Notes List View
+          <div className="h-full overflow-y-auto">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h2>
+                <button
+                  onClick={handleNewNote}
+                  className="p-2 text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search notes..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+                />
+              </div>
+              {loading ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : filteredNotes.length === 0 ? (
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  {searchTerm ? 'No notes match your search.' : 'No notes yet. Create one!'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      onClick={() => handleNoteSelect(note)}
+                      className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
+                    >
+                      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1 truncate">
+                        {note.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                        {stripMarkdown(note.content)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full text-gray-900 dark:text-white">
-            <h2 className="text-lg font-semibold mb-4">Confirm Deletion</h2>
-            <p className="mb-4">Are you sure you want to delete this note? This action cannot be undone.</p>
-            <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Delete Note
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to delete this note? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4">
               <button
                 onClick={cancelDelete}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={executeDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
               >
                 Delete
               </button>

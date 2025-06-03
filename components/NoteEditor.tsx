@@ -2,8 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Save } from 'lucide-react'
+import { Save, Eye, Edit, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ReactMarkdown from 'react-markdown'
 
 // Dynamically import SimpleMDE with no SSR
 const SimpleMDE = dynamic(
@@ -11,23 +12,32 @@ const SimpleMDE = dynamic(
   { ssr: false }
 )
 
-interface NoteEditorProps {
-  content: string
-  onChange: (content: string) => void
-  onSave: (content: string) => Promise<boolean>
-  noteId: string
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  user_id: string;
 }
 
-export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEditorProps) {
-  const [localContent, setLocalContent] = useState(content)
+interface NoteEditorProps {
+  note: Note;
+  onSave: (note: Note) => Promise<boolean>;
+  showPreview: boolean;
+  onTogglePreview: () => void;
+  onDelete: () => void;
+}
+
+export default function NoteEditor({ note, onSave, showPreview, onTogglePreview, onDelete }: NoteEditorProps) {
+  const [localContent, setLocalContent] = useState(note.content)
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   // Update local content when prop changes (e.g., when switching notes)
   useEffect(() => {
-    setLocalContent(content)
+    setLocalContent(note.content)
     setHasChanges(false)
-  }, [content, noteId])
+  }, [note.content, note.id])
 
   const handleSave = useCallback(async () => {
     if (!hasChanges || isSaving) return;
@@ -36,11 +46,13 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
     setIsSaving(true);
     
     try {
-      // Update parent state
-      onChange(localContent)
+      const updatedNote = {
+        ...note,
+        content: localContent
+      };
       
       // Save to database with current local content
-      const success = await onSave(localContent)
+      const success = await onSave(updatedNote)
       
       if (success) {
         setHasChanges(false)
@@ -52,11 +64,11 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
       console.error('Error saving:', error)
       toast.error('Failed to save changes', { id: toastId })
       // Revert local content to the last known good state
-      setLocalContent(content)
+      setLocalContent(note.content)
     } finally {
       setIsSaving(false)
     }
-  }, [hasChanges, isSaving, localContent, onChange, onSave, content])
+  }, [hasChanges, isSaving, localContent, onSave, note])
 
   // SimpleMDE options
   const editorOptions = useMemo(() => ({
@@ -94,18 +106,19 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
   // Use a memo for the editor component to prevent unnecessary re-renders
   const editor = useMemo(() => (
     <SimpleMDE
-      key={noteId}
+      key={note.id}
       value={localContent}
       onChange={handleChange}
       options={editorOptions}
       className="h-full"
     />
-  ), [noteId, localContent, handleChange, editorOptions])
+  ), [note.id, localContent, handleChange, editorOptions])
 
   return (
     <div className="h-full relative">
-      {hasChanges && (
-        <div className="absolute top-2 right-2 z-10">
+      {/* Desktop Controls */}
+      <div className="absolute top-2 right-2 z-10 hidden sm:flex items-center gap-2">
+        {hasChanges && (
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -118,9 +131,77 @@ export default function NoteEditor({ content, onChange, onSave, noteId }: NoteEd
             <Save size={16} />
             {isSaving ? 'Saving...' : 'Save'}
           </button>
+        )}
+        <button
+          onClick={onTogglePreview}
+          className={`flex items-center gap-2 px-3 py-1.5 ${
+            showPreview 
+              ? 'bg-blue-500 hover:bg-blue-600' 
+              : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+          } text-gray-700 dark:text-gray-300 rounded-lg transition-colors`}
+        >
+          {showPreview ? <Edit size={16} /> : <Eye size={16} />}
+          {showPreview ? 'Edit' : 'Preview'}
+        </button>
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-2 px-3 py-1.5 bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+        >
+          <Trash2 size={16} />
+          Delete
+        </button>
+      </div>
+
+      {/* Mobile Controls */}
+      <div className="sm:hidden flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onTogglePreview}
+            className={`flex items-center gap-1 px-2 py-1.5 ${
+              showPreview 
+                ? 'bg-blue-500 hover:bg-blue-600' 
+                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+            } text-gray-700 dark:text-gray-300 rounded-lg transition-colors`}
+          >
+            {showPreview ? <Edit size={16} /> : <Eye size={16} />}
+            <span className="text-xs">{showPreview ? 'Edit' : 'Preview'}</span>
+          </button>
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`flex items-center gap-1 px-2 py-1.5 ${
+                isSaving 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+              } text-white rounded-lg transition-colors`}
+            >
+              <Save size={16} />
+              <span className="text-xs">{isSaving ? 'Saving...' : 'Save'}</span>
+            </button>
+          )}
         </div>
-      )}
-      {editor}
+        <button
+          onClick={onDelete}
+          className="flex items-center gap-1 px-2 py-1.5 bg-red-100 dark:bg-red-900/20 hover:bg-red-200 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+        >
+          <Trash2 size={16} />
+          <span className="text-xs">Delete</span>
+        </button>
+      </div>
+
+      {/* Editor/Preview Content */}
+      <div className="h-full sm:pt-12">
+        {showPreview ? (
+          <div className="h-full overflow-y-auto p-4">
+            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
+              <ReactMarkdown>{localContent || 'No content. Start typing!'}</ReactMarkdown>
+            </div>
+          </div>
+        ) : (
+          editor
+        )}
+      </div>
     </div>
   )
 } 
