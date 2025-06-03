@@ -119,6 +119,7 @@ export default function ClientNotePage({ id }: ClientNotePageProps) {
               title: note.title,
               content: note.content,
               created_at: note.created_at,
+              updated_at: note.updated_at,
               user_id: note.user_id
             }}
             onSave={handleSave}
