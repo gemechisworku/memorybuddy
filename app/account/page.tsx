@@ -3,9 +3,30 @@
 import { useAuth } from '../../contexts/AuthContext'
 import AppLayout from '../../components/AppLayout'
 import { Shield, Mail, Key, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 
 export default function AccountPage() {
   const { user } = useAuth()
+  const [displayName, setDisplayName] = useState<string>('')
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.display_name) {
+        setDisplayName(profile.display_name);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   return (
     <AppLayout>
@@ -26,12 +47,12 @@ export default function AccountPage() {
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <span className="text-2xl font-semibold text-blue-600 dark:text-blue-400">
-                    {user?.email?.[0].toUpperCase()}
+                    {displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
                   </span>
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    {user?.email?.split('@')[0]}
+                    {displayName || user?.email?.split('@')[0]}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {user?.email}
