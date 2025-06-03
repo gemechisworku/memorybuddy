@@ -8,6 +8,7 @@ import AppLayout from '../../components/AppLayout';
 import ReactMarkdown from 'react-markdown';
 import NoteEditor from '../../components/NoteEditor';
 import 'easymde/dist/easymde.min.css';
+import { toast } from 'react-hot-toast';
 
 interface Note {
   id: string;
@@ -25,6 +26,8 @@ export default function NotesPage() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isNoteListCollapsed, setIsNoteListCollapsed] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [noteToDeleteId, setNoteToDeleteId] = useState<string | null>(null);
   const { user } = useAuth();
 
   // Debounce search term
@@ -154,10 +157,30 @@ export default function NotesPage() {
       if (selectedNote?.id === noteId) {
         setSelectedNote(filteredNotes[0] || null);
       }
+      toast.success('Note deleted successfully');
     } catch (error) {
       console.error('Error deleting note:', error);
+      toast.error('Failed to delete note.');
     }
   }, [selectedNote, filteredNotes, fetchNotes]);
+
+  const confirmDelete = useCallback((noteId: string) => {
+    setNoteToDeleteId(noteId);
+    setShowDeleteModal(true);
+  }, []);
+
+  const cancelDelete = useCallback(() => {
+    setShowDeleteModal(false);
+    setNoteToDeleteId(null);
+  }, []);
+
+  const executeDelete = useCallback(async () => {
+    if (noteToDeleteId) {
+      await handleDelete(noteToDeleteId);
+      setShowDeleteModal(false);
+      setNoteToDeleteId(null);
+    }
+  }, [noteToDeleteId, handleDelete]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -279,7 +302,7 @@ export default function NotesPage() {
                     Preview
                   </button>
                   <button
-                    onClick={() => handleDelete(selectedNote.id)}
+                    onClick={() => confirmDelete(selectedNote.id)}
                     className="px-3 py-1 rounded-lg text-sm bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
                   >
                     Delete
@@ -334,6 +357,30 @@ export default function NotesPage() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold mb-4">Confirm Deletion</h2>
+            <p className="mb-4">Are you sure you want to delete this note? This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

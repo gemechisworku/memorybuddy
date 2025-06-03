@@ -2,6 +2,7 @@
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ClientSideProviders } from "./providers";
 
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body>
         <ClientSideProviders>
           {children}
+          <Analytics />
         </ClientSideProviders>
       </body>
     </html>
