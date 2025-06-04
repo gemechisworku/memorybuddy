@@ -368,53 +368,53 @@ export default function NotesPage() {
           </div>
         ) : (
           // Notes List View
-          <div className="h-full overflow-y-auto">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Notes</h2>
-                <button
-                  onClick={handleNewNote}
-                  className="p-2 text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <Plus size={20} />
-                </button>
-              </div>
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <div className="h-full flex flex-col">
+            {/* Search Bar */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search notes..."
                   value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search notes..."
+                  className="w-full px-4 py-2 pl-10 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
                 />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
-              {loading ? (
-                <div className="flex justify-center items-center h-32">
-                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
-              ) : filteredNotes.length === 0 ? (
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                  {searchTerm ? 'No notes match your search.' : 'No notes yet. Create one!'}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredNotes.map((note) => (
-                    <div
-                      key={note.id}
-                      onClick={() => handleNoteSelect(note)}
-                      className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer hover:border-blue-500 dark:hover:border-blue-500 transition-colors"
-                    >
-                      <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1 truncate">
-                        {note.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                        {stripMarkdown(note.content)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+            </div>
+
+            {/* Notes List */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4">
+                <button
+                  onClick={handleNewNote}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  <Plus size={16} />
+                  New Note
+                </button>
+              </div>
+              <div className="space-y-2 px-4 pb-4">
+                {filteredNotes.map((note) => (
+                  <button
+                    key={note.id}
+                    onClick={() => handleNoteSelect(note)}
+                    className="w-full text-left p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                      {note.title || 'Untitled Note'}
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                      {note.content || 'No content'}
+                    </p>
+                  </button>
+                ))}
+                {filteredNotes.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    {searchTerm ? 'No notes found' : 'Create your first note'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
